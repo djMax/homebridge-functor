@@ -42,11 +42,15 @@ class FunctorItem {
     this.config = config;
     this.log = log;
     this.platform = platform;
+    const onCreate = config.onCreate || (config.module && config.module.onCreate);
+    if (onCreate) {
+      onCreate(this);
+    }
   }
 
   get(setting, callback) {
     const member = `get${_.upperFirst(setting)}`;
-    const fn = this.config[member] || this.config.module[member];
+    const fn = this.config[member] || (this.config.module && this.config.module[member]);
     const watcher = watchDog(member, this.config.timeout || 5000, this, callback);
     const maybePromise = fn(this, watcher);
     if (maybePromise instanceof Promise) {

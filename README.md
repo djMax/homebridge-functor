@@ -44,5 +44,5 @@ And the corresponding portion of HomeKit config.json
 
 Now you can say "Hey Siri, turn the fake switch on." The two devices above are just two ways of
 expressing the same thing; the first being a monolithic module that implements all the events,
-the second being one function at a time. You can also specify event handlers (only the created
+the second being one function at a time. You can also specify event handlers (only the onCreate
 event exists so far).
