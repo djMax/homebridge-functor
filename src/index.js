@@ -3,6 +3,10 @@ import path from 'path';
 import { EventEmitter } from 'events';
 import shortstop from 'shortstop';
 import handlers from 'shortstop-handlers';
+import request from 'superagent';
+import compile from 'es6-template-strings/compile';
+import resolveToString from 'es6-template-strings/resolve-to-string';
+import jsonpath from 'JSONPath';
 
 let dogs = 0;
 
@@ -42,6 +46,7 @@ class FunctorItem {
     this.config = config;
     this.log = log;
     this.platform = platform;
+    this.name = config.name;
     const onCreate = config.onCreate || (config.module && config.module.onCreate);
     if (onCreate) {
       onCreate(this);
@@ -52,10 +57,15 @@ class FunctorItem {
     const member = `get${_.upperFirst(setting)}`;
     const fn = this.config[member] || (this.config.module && this.config.module[member]);
     const watcher = watchDog(member, this.config.timeout || 5000, this, callback);
+    if (typeof fn !== 'function') {
+      this.log(`Failed to ${member}: configuration value is not a function (${typeof fn}).`);
+      watcher();
+      return;
+    }
     const maybePromise = fn(this, watcher);
     if (maybePromise instanceof Promise) {
       maybePromise
-        .then(watcher)
+        .then((rz) => watcher(null, rz))
         .catch((e) => {
           this.log(`Failed to ${member}: ${e.message}\n${e.stack}`);
           watcher();
@@ -64,13 +74,13 @@ class FunctorItem {
   }
 
   set(setting, value, callback) {
-    const member = `get${_.upperFirst(setting)}`;
+    const member = `set${_.upperFirst(setting)}`;
     const fn = this.config[member] || this.config.module[member];
     const watcher = watchDog(member, this.config.timeout || 5000, this, callback);
     const maybePromise = fn(this, value, watcher);
     if (maybePromise instanceof Promise) {
       maybePromise
-        .then(watcher)
+        .then(rz => watcher(null, rz))
         .catch((e) => {
           this.log.error(`Failed to ${member}: ${e.message}\n${e.stack}`);
           watcher();
@@ -121,7 +131,32 @@ function functorShortstop(basedir) {
   };
 }
 
-class Functor extends EventEmitter {
+function getUrlShortstop(urlTemplate) {
+  const template = compile(urlTemplate);
+  return function urlHandler(device, arg2, arg3) {
+    const callback = typeof arg2 === 'function' ? arg2 : arg3;
+    const value = typeof arg2 === 'function' ? null : arg2;
+    const [url, pathspec] = resolveToString(template, { value, device }).split('#');
+    request
+      .get(url)
+      .end((error, result) => {
+        if (error) {
+          callback(error);
+          return;
+        }
+        if (pathspec) {
+          const extracted = jsonpath({
+            json: result.body,
+            path: pathspec,
+            wrap: false,
+          });
+          callback(null, extracted);
+        }
+      });
+  };
+}
+
+class FunctorPlatform extends EventEmitter {
   constructor(log, config) {
     super();
     this.setMaxListeners(0);
@@ -135,6 +170,7 @@ class Functor extends EventEmitter {
     const resolver = shortstop.create();
     const appDir = path.dirname(require.main.filename);
     resolver.use('func', functorShortstop(appDir));
+    resolver.use('getUrl', getUrlShortstop);
     resolver.resolve(this.config, (error, resolved) => {
       const items = resolved.devices.map(d => new FunctorItem(this.log, d, this));
       this.accessories = items;
@@ -148,11 +184,11 @@ function Homebridge(homebridge) {
   Characteristic = homebridge.hap.Characteristic;
 
   homebridge.registerAccessory('homebridge-functor-item', 'FunctorItem', FunctorItem);
-  homebridge.registerPlatform('homebridge-functor', 'Functor', Functor);
+  homebridge.registerPlatform('homebridge-functor', 'Functor', FunctorPlatform);
 }
 
 Homebridge.accessory = FunctorItem;
-Homebridge.platform = Functor;
+Homebridge.platform = FunctorPlatform;
 Homebridge.platforms = {};
 
 module.exports = Homebridge;

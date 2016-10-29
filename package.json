@@ -1,11 +1,11 @@
 {
   "name": "homebridge-functor",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Generic homebridge plugin for configurable functions for devices",
   "main": "build/index.js",
   "scripts": {
-    "build": "babel index.js --out-dir build",
-    "prepublish": "babel index.js --out-dir build",
+    "build": "babel src --out-dir build",
+    "prepublish": "babel src --out-dir build",
     "lint": "eslint .",
     "test": "tap --node-arg=-r --node-arg=babel-register tests/*.js"
   },
@@ -35,8 +35,11 @@
     "tap": "^7.0.1"
   },
   "dependencies": {
+    "JSONPath": "^0.11.2",
+    "es6-template-strings": "^2.0.1",
     "lodash": "^4.16.4",
     "shortstop": "^1.0.3",
-    "shortstop-handlers": "^1.0.1"
+    "shortstop-handlers": "^1.0.1",
+    "superagent": "^2.3.0"
   }
 }
