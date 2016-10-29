@@ -1,9 +1,7 @@
 homebridge-functor
 ==================
 
-```
-THIS MODULE DOESN'T WORK YET
-```
+[![wercker status](https://app.wercker.com/status/c2003793615ada8f105862326521a7fc/m/master "wercker status")](https://app.wercker.com/project/byKey/c2003793615ada8f105862326521a7fc)
 
 Sometimes you just want to connect something simple to HomeKit (or Alexa). homebridge-functor allows
 you to do this with "middleware-like" configuration. You just list out your devices, point
